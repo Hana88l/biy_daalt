@@ -1,36 +1,22 @@
-import opencv_test
-from pathlib import Path
+import tensorflow as tf
+from tensorflow.keras.datasets import mnist
 
-# Locate the Haar Cascade file inside OpenCV installation
-cascade_path = Path(opencv_test.data.haarcascades) / "haarcascade_frontalface_default.xml"
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+x_train = x_train.reshape(-1,28,28,1)/255
+x_test = x_test.reshape(-1,28,28,1)/255
 
-# Load the classifier
-clf = opencv_test.CascadeClassifier(str(cascade_path))
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(32,(3,3),activation='relu',input_shape=(28,28,1)),
+    tf.keras.layers.MaxPooling2D(2,2),
+    tf.keras.layers.Conv2D(64,(3,3),activation='relu'),
+    tf.keras.layers.MaxPooling2D(2,2),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128,activation='relu'),
+    tf.keras.layers.Dense(10,activation='softmax')
+])
 
-# Open webcam
-camera = opencv_test.VideoCapture(0, opencv_test.CAP_DSHOW)  # CAP_DSHOW avoids some Windows errors
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
 
-while True:
-    ret, frame = camera.read()
-    if not ret:
-        print("Failed to access camera!")
-        break
-    
-    gray = opencv_test.cvtColor(frame, opencv_test.COLOR_BGR2GRAY)
-    faces = clf.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(30, 30)
-    )
-
-    for (x, y, w, h) in faces:
-        opencv_test.rectangle(frame, (x, y), (x + w, y + h), (255, 255, 0), 2)
-
-    opencv_test.imshow("Live Face Detection - Press Q to Quit", frame)
-
-    if opencv_test.waitKey(1) & 0xFF == ord('q'):
-        break
-
-camera.release()
-opencv_test.destroyAllWindows()
+model.fit(x_train,y_train,epochs=5)
